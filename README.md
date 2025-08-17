@@ -71,7 +71,7 @@ import {
 import sharp from "sharp";
 
 const S3 = new S3Client();
-const DEST_BUCKET = process.env.DEST_BUCKET;
+const DEST_BUCKET = process.env.processed-image-20 ;
 const THUMBNAIL_WIDTH = 200; // px
 const SUPPORTED_FORMATS = {
   jpg: true,
@@ -109,7 +109,7 @@ export const handler = async (event, context) => {
     // store new image in the destination bucket
     await S3.send(
       new PutObjectCommand({
-        Bucket: DEST_BUCKET,
+        Bucket: processed-image-20 ,
         Key: srcKey,
         Body: outputBuffer,
         ContentType,
@@ -125,6 +125,11 @@ export const handler = async (event, context) => {
     console.log(error);
   }
 };
+```
+### Environment Variables
+Remember set the DEST_BUCKET in your Lambda's "Configuration" tab. To do this, open your Lambda in the AWS Console, select the "Configuration" tab, then click "Environment variables"
+```
+DEST_BUCKET=processed-image-20 
 ```
 
 ### 5. Test the Workflow
