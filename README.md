@@ -62,34 +62,67 @@ result in another **S3 bucket**.
     -   Bucket: `upload-image-20`
 
 ### 4. Upload Lambda Code
+```
+import {
+  S3Client,
+  GetObjectCommand,
+  PutObjectCommand,
+} from "@aws-sdk/client-s3";
+import sharp from "sharp";
 
-Example (Node.js with Sharp):
+const S3 = new S3Client();
+const DEST_BUCKET = process.env.DEST_BUCKET;
+const THUMBNAIL_WIDTH = 200; // px
+const SUPPORTED_FORMATS = {
+  jpg: true,
+  jpeg: true,
+  png: true,
+};
 
-``` javascript
-const AWS = require("aws-sdk");
-const S3 = new AWS.S3();
-const Sharp = require("sharp");
+export const handler = async (event, context) => {
+  const { eventTime, s3 } = event.Records[0];
+  const srcBucket = s3.bucket.name;
 
-exports.handler = async (event) => {
-  const bucket = event.Records[0].s3.bucket.name;
-  const key = decodeURIComponent(event.Records[0].s3.object.key.replace(/\+/g, " "));
+  // Object key may have spaces or unicode non-ASCII characters
+  const srcKey = decodeURIComponent(s3.object.key.replace(/\+/g, " "));
+  const ext = srcKey.replace(/^.*\./, "").toLowerCase();
 
+  console.log(`${eventTime} - ${srcBucket}/${srcKey}`);
+
+  if (!SUPPORTED_FORMATS[ext]) {
+    console.log(`ERROR: Unsupported file type (${ext})`);
+    return;
+  }
+
+  // Get the image from the source bucket
   try {
-    const image = await S3.getObject({ Bucket: bucket, Key: key }).promise();
+    const { Body, ContentType } = await S3.send(
+      new GetObjectCommand({
+        Bucket: srcBucket,
+        Key: srcKey,
+      })
+    );
+    const image = await Body.transformToByteArray();
+    // resize image
+    const outputBuffer = await sharp(image).resize(THUMBNAIL_WIDTH).toBuffer();
 
-    const resizedImage = await Sharp(image.Body).resize(300, 300).toBuffer();
-
-    await S3.putObject({
-      Bucket: "processed-image-20",
-      Key: key,
-      Body: resizedImage,
-      ContentType: "image/jpeg"
-    }).promise();
-
-    return { status: "Image resized successfully" };
-  } catch (err) {
-    console.error(err);
-    throw new Error("Image processing failed");
+    // store new image in the destination bucket
+    await S3.send(
+      new PutObjectCommand({
+        Bucket: DEST_BUCKET,
+        Key: srcKey,
+        Body: outputBuffer,
+        ContentType,
+      })
+    );
+    const message = `Successfully resized ${srcBucket}/${srcKey} and uploaded to ${DEST_BUCKET}/${srcKey}`;
+    console.log(message);
+    return {
+      statusCode: 200,
+      body: message,
+    };
+  } catch (error) {
+    console.log(error);
   }
 };
 ```
