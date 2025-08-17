@@ -9,6 +9,8 @@ using AWS services.\
 Users upload an image to an **Amazon S3 bucket**, which triggers a
 **Lambda function** that resizes the image and stores the processed
 result in another **S3 bucket**.
+## Video Demo
+https://drive.google.com/file/d/1JsiVkbdgU10yOQ_eZi0ecbISR7TJz4Mx/view?usp=drive_link
 
 ## 🏗️ Architecture
 
